@@ -91,8 +91,9 @@ mesh(new T.BoxGeometry(1.82,.22,1.05),paint,0,1.08,1.25,car); // rear deck
 for(const sideSign of [-1,1]){
   // Wheel arches, side skirts and mirrors
   for(const z of [-1.28,1.28]){
-    const arch=mesh(new T.TorusGeometry(.58,.12,10,28,Math.PI),paint,sideSign*1.01,.61,z,car);
-    arch.rotation.z=Math.PI;
+    // Keep the wheel openings visually clean; avoid exposed torus arcs.
+    const fender=mesh(new T.BoxGeometry(.12,.16,1.18),paint,sideSign*1.02,.98,z,car);
+    fender.rotation.z=0;
   }
   mesh(new T.BoxGeometry(.12,.25,2.25),paint,sideSign*1.01,.72,0,car);
   const mirror=mesh(new T.BoxGeometry(.22,.14,.34),paint,sideSign*.98,1.55,-.68,car);
@@ -139,7 +140,7 @@ if(up)speed+=(18+(speed>20?2:0))*dt;else speed-=3.2*dt;if(dn)speed-=25*dt;speed=
 const turn=(left?1:0)-(right?1:0);steer=T.MathUtils.damp(steer,turn,4.8,dt);yaw+=steer*(drift?1.45:1.05)*(.22+Math.abs(speed)/36)*dt*Math.sign(speed||1);car.position.x+=Math.sin(yaw)*speed*dt;car.position.z-=Math.cos(yaw)*speed*dt;car.position.x=clamp(car.position.x,-145,145);car.position.z=clamp(car.position.z,2,24);car.rotation.y=yaw;car.rotation.z=-steer*.035;
 if(count<6&&Math.hypot(car.position.x-rings[count].position.x,car.position.z-12)<3.4){rings[count].visible=false;count++;if(count<6)rings[count].visible=true;document.querySelector('#progress').textContent='CHECKPOINTS '+count+' / 6';}
 rings.forEach((r,i)=>{r.rotation.z+=dt*.45;r.position.y=3+Math.sin(elapsed*1.7+i)*.2;});
-if(follow){const target=new T.Vector3(car.position.x-Math.sin(yaw)*7.2,3.25,car.position.z+Math.cos(yaw)*7.2);camera.position.lerp(target,1-Math.exp(-5.2*dt));camera.lookAt(car.position.x,1.15,car.position.z-1.3);}
+if(follow){const target=new T.Vector3(car.position.x-Math.sin(yaw)*14.5,6.0,car.position.z+Math.cos(yaw)*14.5);camera.position.lerp(target,1-Math.exp(-3.8*dt));camera.lookAt(car.position.x,1.05,car.position.z-1.0);}
 else{camera.position.lerp(new T.Vector3(car.position.x,25,car.position.z+2),1-Math.exp(-2*dt));camera.lookAt(car.position);}
 // Animate wave normals by gently displacing vertices; low-cost, no heavy post-processing.
 const wa=oceanGeo.attributes.position;
@@ -147,7 +148,7 @@ for(let i=0;i<wa.count;i++){const x=oceanBase[i*3],z=oceanBase[i*3+2];wa.array[i
 wa.needsUpdate=true;oceanGeo.computeVertexNormals();
 const night=(Math.sin(elapsed/52-1)+1)/2;scene.background.setHSL(.56-night*.48,.43,.2+night*.27);scene.fog.color.copy(scene.background);skyMat.uniforms.top.value.setHSL(.58-night*.42,.42,.28+night*.13);skyMat.uniforms.horizon.value.setHSL(.075-night*.03,.62,.68-night*.38);skyMat.uniforms.sunset.value.setHSL(.035,.7,.62-night*.35);sun.intensity=2.8*(1-night)+.18;hemi.intensity=1.6*(1-night)+.55;document.querySelector('#time').textContent=night>.67?'NEON NIGHT':night>.35?'BLUE HOUR':'GOLDEN HOUR';document.querySelector('#speed').textContent=String(Math.round(Math.abs(speed)*3.6)).padStart(3,'0');renderer.render(scene,camera);}
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));});
-rings.forEach((r,i)=>r.visible=i===0);camera.position.set(-124,7,25);camera.lookAt(-112,1,10);animate();loading.style.opacity='0';setTimeout(()=>loading.remove(),650);
+rings.forEach((r,i)=>r.visible=i===0);camera.position.set(-126.5,6,24);camera.lookAt(-112,1.05,11);animate();loading.style.opacity='0';setTimeout(()=>loading.remove(),650);
 }catch(e){console.error(e);fail('Scene startup error: '+e.message);}
 })();
 </script></body></html>
