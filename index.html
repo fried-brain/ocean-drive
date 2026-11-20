@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#07101d"><title>OCEAN DRIVE — South Beach</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07101d;color:#fff;font-family:system-ui,Arial}canvas{display:block}#hud{position:fixed;inset:0;pointer-events:none;text-shadow:0 2px 10px #000}#brand{position:absolute;top:18px;left:20px;letter-spacing:.2em;font-size:11px;color:#f4cf9b}#brand b{display:block;font-size:21px;color:white}#stats{position:absolute;right:18px;top:18px;text-align:right;font-size:11px;letter-spacing:.12em}#speed{font-size:28px;font-weight:800}#mission{position:absolute;left:20px;top:105px;padding:12px 14px;border:1px solid #f5c77b66;border-radius:12px;background:#081421bb;font-size:10px;letter-spacing:.1em;max-width:220px}#mission b{display:block;font-size:14px;color:#fff;margin-bottom:5px}#toast{position:absolute;top:22%;left:50%;transform:translateX(-50%);padding:10px 16px;background:#071421dd;border:1px solid #f5c77b88;border-radius:30px;opacity:0;transition:.25s;font-size:11px;white-space:nowrap}#toast.show{opacity:1}#help{position:absolute;bottom:18px;left:20px;font-size:10px;letter-spacing:.12em;color:#f3dfc7}#actions{position:absolute;right:18px;bottom:18px;display:flex;gap:8px;pointer-events:auto}button{border:1px solid #ffffff66;border-radius:24px;padding:11px 14px;background:#081421cc;color:#fff;font-size:10px;letter-spacing:.1em}#touch{display:none;position:absolute;bottom:78px;left:14px;right:14px;justify-content:space-between;pointer-events:none}#touch div{display:flex;gap:8px;pointer-events:auto}#touch button{width:58px;height:58px;padding:0;font-size:12px;touch-action:none}#loading{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:linear-gradient(145deg,#1a2b3c,#07101d);text-align:center;letter-spacing:.18em}#loading b{display:block;font-size:27px;letter-spacing:.1em;margin-bottom:10px}#error{display:none;max-width:300px;margin:18px auto;color:#ffd6b8;font-size:12px;line-height:1.5;letter-spacing:0}@media(max-width:700px){#touch{display:flex}#help{bottom:18px;left:16px;font-size:8px}#actions{bottom:150px;right:12px;flex-direction:column}#mission{top:90px;left:12px;max-width:170px;padding:9px}#brand{left:14px;top:12px}#brand b{font-size:17px}#stats{right:12px;top:12px}}
+</style></head><body>
+<div id="loading"><div><b>OCEAN DRIVE</b>LOADING SOUTH BEACH<div id="error"></div></div></div>
+<div id="hud"><div id="brand">MIAMI BEACH / FLORIDA<b>OCEAN DRIVE</b></div><div id="stats"><div id="speed">000</div>KM/H<br><span id="phase">GOLDEN HOUR</span><br><span id="score">CHECKPOINTS 0 / 6</span></div><div id="mission"><b>South Beach Discovery</b>Drive through the six golden rings. Explore the boulevard and coastline.</div><div id="toast"></div><div id="help">WASD / ARROWS DRIVE · SHIFT DRIFT · R RESET · E CHANGE VIEW</div><div id="actions"><button id="view">CHANGE VIEW</button><button id="reset">RESTART</button></div><div id="touch"><div><button data-key="a">◀</button><button data-key="d">▶</button></div><div><button data-key="s">BRAKE</button><button data-key="w">GO</button></div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" onerror="window.__threeLoadFailed=true"></script>
+<script>
+(()=>{'use strict';
+const loading=document.querySelector('#loading'),err=document.querySelector('#error');
+function fail(m){err.style.display='block';err.textContent=m;loading.querySelector('b').textContent='OCEAN DRIVE';}
+if(!window.THREE){fail('The 3D engine could not load. Check your internet connection, then reload this page.');return;}
+try{
+const THREE=window.THREE,scene=new THREE.Scene();scene.background=new THREE.Color(0xf3a66f);scene.fog=new THREE.Fog(0xf3a66f,100,330);
+const camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,700);camera.position.set(0,9,17);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.insertBefore(renderer.domElement,document.querySelector('#hud'));
+scene.add(new THREE.HemisphereLight(0xb7d9ff,0x68433a,1.6));const sun=new THREE.DirectionalLight(0xffd0a0,2.6);sun.position.set(-60,90,35);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);scene.add(sun);
+const mat=(c,r=.8,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
+const sand=mat(0xd8bd91),roadmat=mat(0x333b43,.92),sidewalk=mat(0xd2c0a6),oceanmat=mat(0x147d91,.3,.25),white=mat(0xf4e8d5),dark=mat(0x20242b),glass=mat(0x426474,.25,.2),pink=new THREE.MeshStandardMaterial({color:0xf47ca6,emissive:0x9e2856,emissiveIntensity:.4});
+function box(parent,x,y,z,w,h,d,material){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o;}
+const ground=box(scene,0,-.6,0,500,1,500,sand);const ocean=box(scene,0,-.35,-115,500,.25,160,oceanmat);
+box(scene,0,-.05,8,500,.2,20,sidewalk);box(scene,0,-.02,24,500,.18,20,roadmat);
+for(let x=-240;x<250;x+=12){box(scene,x,.08,24,.18,.03,1.8,white);}
+box(scene,0,-.02,-10,500,.2,16,mat(0x4a9b83));
+function palm(x,z){const g=new THREE.Group();g.position.set(x,0,z);scene.add(g);const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.28,.48,8,8),mat(0x806044));trunk.position.y=4;trunk.rotation.z=-.12;g.add(trunk);for(let i=0;i<8;i++){const a=i*Math.PI/4,leaf=new THREE.Mesh(new THREE.ConeGeometry(.55,6,5),mat(0x277357));leaf.position.set(Math.sin(a)*2.2,7.5+Math.cos(a)*.4,Math.cos(a)*2.2);leaf.rotation.z=Math.cos(a)*.9;leaf.rotation.x=Math.sin(a)*.9;g.add(leaf);}}
+for(let x=-220;x<=220;x+=18){palm(x,-4);palm(x,38);}
+const colors=[0xf0c7a0,0xf4e1cb,0x8babb1,0xe8b6a0,0xd7c58e];
+for(let i=0;i<26;i++){let x=-225+i*18,z=-31-(i%3)*10,w=10+(i%3)*2,h=13+(i%5)*4;const b=box(scene,x,h/2,z,w,h,9,mat(colors[i%colors.length]));box(scene,x,h+1,z, w*.7,1.1,9,white);for(let wy=0;wy<h-3;wy+=3)for(let wx=-w/2+1;wx<w/2;wx+=2.5)box(scene,x+wx,wy+2,z+4.58,.65,1.1,.08,i%2?pink:mat(0x78c3d3));}
+const car=new THREE.Group();scene.add(car);box(car,0,.9,0,2.1,.7,4.2,mat(0xb52d42,.28,.45));box(car,0,1.52,-.3,1.65,.65,1.9,glass);for(const x of [-1.08,1.08])for(const z of [-1.35,1.35]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.38,.38,.22,16),dark);w.rotation.z=Math.PI/2;w.position.set(x,.48,z);car.add(w);}car.position.set(-95,0,24);
+const rings=[];for(let i=0;i<6;i++){const r=new THREE.Mesh(new THREE.TorusGeometry(2.2,.16,12,40),new THREE.MeshStandardMaterial({color:0xffd17a,emissive:0xff9b35,emissiveIntensity:2}));r.position.set(-75+i*30,3,24);r.rotation.y=Math.PI/2;scene.add(r);rings.push(r);}
+const keys=new Set();addEventListener('keydown',e=>{keys.add(e.key.toLowerCase());if(e.key.toLowerCase()==='r')reset();if(e.key.toLowerCase()==='e')follow=!follow;});addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+document.querySelectorAll('[data-key]').forEach(b=>{const k=b.dataset.key;b.addEventListener('pointerdown',e=>{e.preventDefault();keys.add(k);b.setPointerCapture(e.pointerId)});['pointerup','pointercancel','lostpointercapture'].forEach(t=>b.addEventListener(t,()=>keys.delete(k)));});
+let speed=0,yaw=0,count=0,follow=true,elapsed=0;const clock=new THREE.Clock();const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function toast(s){const t=document.querySelector('#toast');t.textContent=s;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
+function reset(){car.position.set(-95,0,24);speed=0;yaw=0;count=0;rings.forEach((r,i)=>r.visible=i===0);document.querySelector('#score').textContent='CHECKPOINTS 0 / 6';toast('ROUTE RESET');}
+document.querySelector('#reset').onclick=reset;document.querySelector('#view').onclick=()=>follow=!follow;
+function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04);elapsed+=dt;
+const up=keys.has('w')||keys.has('arrowup'),dn=keys.has('s')||keys.has('arrowdown'),left=keys.has('a')||keys.has('arrowleft'),right=keys.has('d')||keys.has('arrowright'),drift=keys.has('shift');
+if(up)speed+=20*dt;else speed-=4*dt;if(dn)speed-=30*dt;speed=clamp(speed,-7,42);
+const steer=(left?1:0)-(right?1:0);yaw+=steer*(drift?1.8:1.1)*(.25+Math.abs(speed)/35)*dt*Math.sign(speed||1);car.position.x+=Math.sin(yaw)*speed*dt;car.position.z-=Math.cos(yaw)*speed*dt;car.position.x=clamp(car.position.x,-115,115);car.position.z=clamp(car.position.z,15,34);car.rotation.y=yaw;car.rotation.z=-steer*.07;
+if(count<rings.length&&Math.hypot(car.position.x-rings[count].position.x,car.position.z-24)<3.2){rings[count].visible=false;count++;if(count<rings.length)rings[count].visible=true;document.querySelector('#score').textContent='CHECKPOINTS '+count+' / 6';toast(count===6?'SOUTH BEACH ROUTE COMPLETE!':'CHECKPOINT '+count+' / 6 · +100 XP');}
+rings.forEach((r,i)=>{r.rotation.z+=dt*.7;r.position.y=3+Math.sin(elapsed*2+i)*.2;});
+if(follow){const target=new THREE.Vector3(car.position.x-Math.sin(yaw)*10,6,car.position.z+Math.cos(yaw)*10);camera.position.lerp(target,1-Math.exp(-4*dt));camera.lookAt(car.position.x,1,car.position.z);}
+else{camera.position.lerp(new THREE.Vector3(car.position.x,22,car.position.z+1),1-Math.exp(-2*dt));camera.lookAt(car.position);}
+const night=(Math.sin(elapsed/45-1)+1)/2;scene.background.setHSL(.56-night*.48,.42,.2+night*.28);scene.fog.color.copy(scene.background);sun.intensity=2.6*(1-night)+.25;document.querySelector('#phase').textContent=night>.65?'NEON NIGHT':night>.35?'BLUE HOUR':'GOLDEN HOUR';document.querySelector('#speed').textContent=String(Math.round(Math.abs(speed)*3.6)).padStart(3,'0');renderer.render(scene,camera);}
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));});
+rings.forEach((r,i)=>r.visible=i===0);animate();loading.style.opacity='0';setTimeout(()=>loading.remove(),600);
+}catch(e){console.error(e);fail('The game encountered a startup error: '+e.message+'. Reload the page.');}
+})();
+</script></body></html>
