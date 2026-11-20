@@ -14,7 +14,12 @@ if(!window.THREE){fail('3D engine failed to load. Check your connection and relo
 try{
 const T=THREE,scene=new T.Scene();scene.background=new T.Color(0xf0a878);scene.fog=new T.FogExp2(0xe9a77f,.0018);
 const camera=new T.PerspectiveCamera(54,innerWidth/innerHeight,.1,1000);
-const renderer=new T.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;document.body.insertBefore(renderer.domElement,document.querySelector('#hud'));
+const renderer=new T.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;document.body.insertBefore(renderer.domElement,document.querySelector('#hud'));
+// Procedural atmospheric sky dome with a warm horizon gradient.
+const skyGeo=new T.SphereGeometry(520,32,18);
+const skyMat=new T.ShaderMaterial({side:T.BackSide,depthWrite:false,uniforms:{top:{value:new T.Color(0x32617f)},horizon:{value:new T.Color(0xf3b27d)},sunset:{value:new T.Color(0xe98768)}},vertexShader:`varying vec3 vWorld;void main(){vec4 w=modelMatrix*vec4(position,1.0);vWorld=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,fragmentShader:`uniform vec3 top;uniform vec3 horizon;uniform vec3 sunset;varying vec3 vWorld;void main(){float h=normalize(vWorld).y;float t=smoothstep(-.12,.62,h);vec3 c=mix(horizon,top,t);float glow=exp(-pow((h-.035)*8.0,2.0));c=mix(c,sunset,glow*.5);gl_FragColor=vec4(c,1.0);}`});
+const sky=new T.Mesh(skyGeo,skyMat);scene.add(sky);
+
 const hemi=new T.HemisphereLight(0xc4e2ff,0x8d6554,1.65);scene.add(hemi);
 const sun=new T.DirectionalLight(0xffd0a0,3.1);sun.position.set(-70,100,45);sun.castShadow=true;sun.shadow.mapSize.set(1536,1536);sun.shadow.camera.left=-130;sun.shadow.camera.right=130;sun.shadow.camera.top=100;sun.shadow.camera.bottom=-100;scene.add(sun);
 const fill=new T.DirectionalLight(0x91c8e9,.7);fill.position.set(40,30,-60);scene.add(fill);
@@ -23,7 +28,11 @@ const sand=mat(0xd8c09c),asphalt=mat(0x343b43,.92),side=mat(0xd6c6ac,.88),grass=
 function mesh(g,m,x,y,z,parent=scene){const o=new T.Mesh(g,m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o}
 function box(x,y,z,w,h,d,m,parent=scene){return mesh(new T.BoxGeometry(w,h,d),m,x,y,z,parent)}
 // Continuous beach, promenade and road ribbons.
-box(0,-.65,0,700,1,500,sand);box(0,-.22,-120,700,.55,170,waterMat);box(0,-.04,-18,700,.18,22,side);box(0,-.01,12,700,.16,36,asphalt);box(0,-.01,37,700,.16,13,side);box(0,-.05,48,700,.2,12,grass);
+box(0,-.65,0,700,1,500,sand);box(0,-.22,-120,700,.55,170,waterMat);// Gently animated ocean surface; restrained on mobile for stable frame times.
+const oceanGeo=new T.PlaneGeometry(700,170,100,32);oceanGeo.rotateX(-Math.PI/2);
+const oceanSurface=new T.Mesh(oceanGeo,waterMat);oceanSurface.position.set(0,.1,-120);oceanSurface.receiveShadow=true;scene.add(oceanSurface);
+const oceanBase=Float32Array.from(oceanGeo.attributes.position.array);
+box(0,-.04,-18,700,.18,22,side);box(0,-.01,12,700,.16,36,asphalt);box(0,-.01,37,700,.16,13,side);box(0,-.05,48,700,.2,12,grass);
 for(let x=-330;x<340;x+=13){box(x,.075,12,.12,.025,2.4,white);box(x,.08,-.2,.09,.025,1.2,white);}
 for(let x=-330;x<340;x+=7){box(x,.04,30,.22,.07,1.5,mat(0xc4b49b));}
 // Water ripples as thin translucent lines.
@@ -75,6 +84,48 @@ for(let sideSign of [-1,1]){
  for(let z of [-1.92,1.92]){mesh(new T.BoxGeometry(.48,.14,.06),mat(0xfff2d6,.2,.1),sideSign*.62,1.03,z,car);}
 }
 mesh(new T.BoxGeometry(1.7,.12,3.7),chrome,0,.72,0,car);
+// Sculpted bodywork and readable automotive details.
+mesh(new T.BoxGeometry(1.95,.32,3.45),paint,0,.88,0,car);
+mesh(new T.BoxGeometry(1.82,.22,1.28),paint,0,1.08,-1.12,car); // bonnet
+mesh(new T.BoxGeometry(1.82,.22,1.05),paint,0,1.08,1.25,car); // rear deck
+for(const sideSign of [-1,1]){
+  // Wheel arches, side skirts and mirrors
+  for(const z of [-1.28,1.28]){
+    const arch=mesh(new T.TorusGeometry(.58,.12,10,28,Math.PI),paint,sideSign*1.01,.61,z,car);
+    arch.rotation.z=Math.PI;
+  }
+  mesh(new T.BoxGeometry(.12,.25,2.25),paint,sideSign*1.01,.72,0,car);
+  const mirror=mesh(new T.BoxGeometry(.22,.14,.34),paint,sideSign*.98,1.55,-.68,car);
+  mirror.rotation.y=sideSign*.12;
+}
+// Windshield, rear glass and cabin framing
+const windshield=mesh(new T.BoxGeometry(1.55,.08,.72),windowMat,0,1.62,-.8,car);windshield.rotation.x=-.48;
+const rearGlass=mesh(new T.BoxGeometry(1.48,.07,.62),windowMat,0,1.57,.65,car);rearGlass.rotation.x=.42;
+for(const x of [-.77,.77]){
+  mesh(new T.BoxGeometry(.075,.62,1.68),chrome,x,1.52,-.02,car);
+  mesh(new T.BoxGeometry(.08,.11,1.8),paint,x,1.86,-.02,car);
+}
+// Cockpit seats and dashboard visible through glazing
+for(const x of [-.42,.42]){
+  mesh(new T.BoxGeometry(.52,.48,.58),dark,x,1.32,.18,car);
+  mesh(new T.BoxGeometry(.52,.58,.16),dark,x,1.62,.42,car);
+}
+mesh(new T.BoxGeometry(1.42,.12,.2),dark,0,1.47,-.7,car);
+// Front grille, rear diffuser, lights and exhaust tips
+mesh(new T.BoxGeometry(1.05,.22,.06),dark,0,.78,-1.77,car);
+mesh(new T.BoxGeometry(.75,.08,.06),chrome,0,.78,-1.81,car);
+for(const x of [-.68,.68]){
+  mesh(new T.BoxGeometry(.42,.16,.07),new T.MeshStandardMaterial({color:0xfff0d4,emissive:0xffdba0,emissiveIntensity:.55}),x,1.02,-1.79,car);
+  mesh(new T.BoxGeometry(.38,.13,.07),new T.MeshStandardMaterial({color:0xff263f,emissive:0x8d0017,emissiveIntensity:.65}),x,1.02,1.79,car);
+  mesh(new T.CylinderGeometry(.09,.09,.16,16),chrome,x*.72,.55,1.91,car).rotation.x=Math.PI/2;
+}
+// Alloy wheel spokes
+for(const sideSign of [-1,1])for(const z of [-1.32,1.32])for(let s=0;s<10;s++){
+ const a=s*Math.PI/5;
+ const spoke=mesh(new T.BoxGeometry(.055,.38,.045),chrome,sideSign*1.225,.58,z,car);
+ spoke.rotation.x=a;
+}
+
 car.position.set(-112,0,12);let yaw=Math.PI/2,speed=0,steer=0;
 const rings=[];for(let i=0;i<6;i++){const ring=mesh(new T.TorusGeometry(2.5,.12,14,48),new T.MeshStandardMaterial({color:0xffd18a,emissive:0xff9c38,emissiveIntensity:2.3}),-82+i*31,3,12);ring.rotation.y=Math.PI/2;rings.push(ring);}
 const keys=new Set();addEventListener('keydown',e=>{keys.add(e.key.toLowerCase());if(e.key.toLowerCase()==='r')reset();if(e.key.toLowerCase()==='v')follow=!follow;});addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
@@ -88,9 +139,13 @@ if(up)speed+=(18+(speed>20?2:0))*dt;else speed-=3.2*dt;if(dn)speed-=25*dt;speed=
 const turn=(left?1:0)-(right?1:0);steer=T.MathUtils.damp(steer,turn,4.8,dt);yaw+=steer*(drift?1.45:1.05)*(.22+Math.abs(speed)/36)*dt*Math.sign(speed||1);car.position.x+=Math.sin(yaw)*speed*dt;car.position.z-=Math.cos(yaw)*speed*dt;car.position.x=clamp(car.position.x,-145,145);car.position.z=clamp(car.position.z,2,24);car.rotation.y=yaw;car.rotation.z=-steer*.035;
 if(count<6&&Math.hypot(car.position.x-rings[count].position.x,car.position.z-12)<3.4){rings[count].visible=false;count++;if(count<6)rings[count].visible=true;document.querySelector('#progress').textContent='CHECKPOINTS '+count+' / 6';}
 rings.forEach((r,i)=>{r.rotation.z+=dt*.45;r.position.y=3+Math.sin(elapsed*1.7+i)*.2;});
-if(follow){const target=new T.Vector3(car.position.x-Math.sin(yaw)*11,5.8,car.position.z+Math.cos(yaw)*11);camera.position.lerp(target,1-Math.exp(-3.4*dt));camera.lookAt(car.position.x,1.1,car.position.z-2);}
+if(follow){const target=new T.Vector3(car.position.x-Math.sin(yaw)*7.2,3.25,car.position.z+Math.cos(yaw)*7.2);camera.position.lerp(target,1-Math.exp(-5.2*dt));camera.lookAt(car.position.x,1.15,car.position.z-1.3);}
 else{camera.position.lerp(new T.Vector3(car.position.x,25,car.position.z+2),1-Math.exp(-2*dt));camera.lookAt(car.position);}
-const night=(Math.sin(elapsed/52-1)+1)/2;scene.background.setHSL(.56-night*.48,.43,.2+night*.27);scene.fog.color.copy(scene.background);sun.intensity=2.8*(1-night)+.18;hemi.intensity=1.6*(1-night)+.55;document.querySelector('#time').textContent=night>.67?'NEON NIGHT':night>.35?'BLUE HOUR':'GOLDEN HOUR';document.querySelector('#speed').textContent=String(Math.round(Math.abs(speed)*3.6)).padStart(3,'0');renderer.render(scene,camera);}
+// Animate wave normals by gently displacing vertices; low-cost, no heavy post-processing.
+const wa=oceanGeo.attributes.position;
+for(let i=0;i<wa.count;i++){const x=oceanBase[i*3],z=oceanBase[i*3+2];wa.array[i*3+1]=oceanBase[i*3+1]+Math.sin(x*.035+elapsed*1.15)*.18+Math.cos(z*.055+elapsed*.8)*.12;}
+wa.needsUpdate=true;oceanGeo.computeVertexNormals();
+const night=(Math.sin(elapsed/52-1)+1)/2;scene.background.setHSL(.56-night*.48,.43,.2+night*.27);scene.fog.color.copy(scene.background);skyMat.uniforms.top.value.setHSL(.58-night*.42,.42,.28+night*.13);skyMat.uniforms.horizon.value.setHSL(.075-night*.03,.62,.68-night*.38);skyMat.uniforms.sunset.value.setHSL(.035,.7,.62-night*.35);sun.intensity=2.8*(1-night)+.18;hemi.intensity=1.6*(1-night)+.55;document.querySelector('#time').textContent=night>.67?'NEON NIGHT':night>.35?'BLUE HOUR':'GOLDEN HOUR';document.querySelector('#speed').textContent=String(Math.round(Math.abs(speed)*3.6)).padStart(3,'0');renderer.render(scene,camera);}
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));});
 rings.forEach((r,i)=>r.visible=i===0);camera.position.set(-124,7,25);camera.lookAt(-112,1,10);animate();loading.style.opacity='0';setTimeout(()=>loading.remove(),650);
 }catch(e){console.error(e);fail('Scene startup error: '+e.message);}
